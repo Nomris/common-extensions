@@ -11,7 +11,8 @@ namespace Extensions
         public static byte[] ReadArray(this Stream stream, int length)
         {
             byte[] buffer = new byte[length];
-            stream.Read(buffer, 0, length);
+            int remainder = length;
+            while (remainder > 0) remainder -= stream.Read(buffer, length - remainder, remainder);
             return buffer;
         }
 
@@ -102,8 +103,7 @@ namespace Extensions
         public static string ReadString(this Stream stream, Encoding encoding = null, bool zeroTerminate = true, int? length = null)
         {
             encoding = encoding ?? Encoding.ASCII;
-            if (length.HasValue) zeroTerminate = length.Value <= 0;
-
+        
             if (zeroTerminate)
             {
                 string buffer = "";
@@ -235,6 +235,7 @@ namespace Extensions
             {
                 byte[] buffer = new byte[prependSize];
                 Array.Copy(BitConverter.GetBytes(rawStr.Length), buffer, prependSize);
+                if (BitConverter.IsLittleEndian) Array.Reverse(buffer);
                 stream.Write(buffer);
             }
 
@@ -248,6 +249,93 @@ namespace Extensions
             stream.Write(guid.ToByteArray());
         }
 
+        public static void Write(this Stream stream, IStreamable streamable)
+        {
+            streamable.ToStream(stream);
+        }
+
+        public static void Write<T>(this Stream stream, T @enum) where T : Enum
+        {
+            Type baseType = typeof(T).GetEnumUnderlyingType();
+            if (baseType == typeof(byte))
+            {
+                Write(stream, (byte)(object)@enum);
+                return;
+            }
+            if (baseType == typeof(sbyte))
+            {
+                Write(stream, (sbyte)(object)@enum);
+                return;
+            }
+            if (baseType == typeof(ushort))
+            {
+                Write(stream, (ushort)(object)@enum);
+                return;
+            }
+            if (baseType == typeof(short))
+            {
+                Write(stream, (short)(object)@enum);
+                return;
+            }
+            if (baseType == typeof(uint))
+            {
+                Write(stream, (uint)(object)@enum);
+                return;
+            }
+            if (baseType == typeof(int))
+            {
+                Write(stream, (int)(object)@enum);
+                return;
+            }
+            if (baseType == typeof(ulong))
+            {
+                Write(stream, (ulong)(object)@enum);
+                return;
+            }
+            if (baseType == typeof(long))
+            {
+                Write(stream, (long)(object)@enum);
+                return;
+            }
+            throw new InvalidCastException("Unknown Number Value");
+        }
+
+        public static T ReadEnum<T>(this Stream stream) where T : Enum
+        {
+            Type type = typeof(T);
+            Type baseType = type.GetEnumUnderlyingType();
+            if (baseType == typeof(byte))
+                return (T)Enum.ToObject(type, (byte)stream.ReadByte());
+            if (baseType == typeof(sbyte))
+                return (T)Enum.ToObject(type, stream.ReadSByte());
+            if (baseType == typeof(ushort))
+                return (T)Enum.ToObject(type, stream.ReadUInt16());
+            if (baseType == typeof(short))
+                return (T)Enum.ToObject(type, stream.ReadInt16());
+            if (baseType == typeof(uint))
+                return (T)Enum.ToObject(type, stream.ReadUInt32());
+            if (baseType == typeof(int))
+                return (T)Enum.ToObject(type, stream.ReadInt32());
+            if (baseType == typeof(ulong))
+                return (T)Enum.ToObject(type, stream.ReadUInt64());
+            if (baseType == typeof(long))
+                return (T)Enum.ToObject(type, stream.ReadInt64());
+
+            throw new InvalidCastException("Unknown Number Value");
+        }
+
+        public static StreamPackage OpenPackage(this Stream stream)
+        {
+            return new StreamPackage(stream);
+        }
+
+        public static void ClosePackage(this Stream stream, StreamPackage package)
+        {
+            package.Submit(stream);
+        }
+
         #endregion
+    
+        
     }
 }
