@@ -109,8 +109,16 @@ namespace Extensions
                 string buffer = "";
                 if (!encoding.IsSingleByte) throw new ArgumentException("Zero termination only aviable in single byte encoding", nameof(encoding));
                 byte c;
-                while ((c = (byte)stream.ReadByte()) != '\0')
+                if (length.HasValue)
+                {
+                    while ((c = (byte)stream.ReadByte()) != '\0' && --length > 0)
+                        buffer += (char)c;
+
+                    while (--length > 0) stream.ReadByte();
+                }
+                else while ((c = (byte)stream.ReadByte()) != '\0')
                     buffer += (char)c;
+
                 return buffer;
             }
 
@@ -125,9 +133,9 @@ namespace Extensions
             return new Guid(stream.ReadArray(16));
         }
 
-        #endregion
+#endregion
 
-        #region Writer
+#region Writer
 
         public static void WriteFixed(this Stream stream, long? size, byte[] data)
         {
@@ -334,7 +342,7 @@ namespace Extensions
             package.Submit(stream);
         }
 
-        #endregion
+#endregion
     
         
     }
